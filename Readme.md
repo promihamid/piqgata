@@ -1,249 +1,284 @@
-# Physics-Informed Quantum Graph Attention Network (PI-QGAT)
+# PI-QGAT: Physics-Informed Quantum Graph Attention Network for Muon pT Regression
 
-### A Hybrid Quantum-Classical Graph Learning Framework for Particle Transverse Momentum Prediction
+A compact hybrid quantum–classical graph neural network that predicts the transverse momentum (pT) of muons from CMS endcap muon trigger hits. The model has only **144 trainable parameters** and uses a 4-qubit variational circuit as the edge-interaction block of a graph attention network. The quantum circuit is simulated exactly with a fast closed-form JAX backend, verified against PennyLane.
 
-## Overview
-
-This project introduces **Physics-Informed Quantum Graph Attention Network (PI-QGAT)**, a hybrid quantum-classical graph learning framework designed to predict particle transverse momentum (\(p_T\)) from detector measurements in the CMS Trigger Dataset.
-
-The model combines Graph Neural Networks (GNNs), physics-informed attention, and a parameterized quantum circuit to learn interactions between detector stations. A 4-qubit quantum circuit is integrated into the graph message-passing mechanism to capture pairwise relationships between detector stations through quantum interactions and entanglement.
-
-Beyond developing the architecture, this project investigates the contribution of its quantum and classical components through extensive ablation experiments and controlled quantum-versus-classical comparisons.
-
-## Key Features
-
-- **Hybrid Quantum-Classical Architecture:** Integrates a parameterized quantum circuit into a graph attention framework.
-- **Physics-Informed Attention:** Incorporates detector geometry through angular and bending-angle differences.
-- **Quantum Interaction Block:** Uses a 4-qubit variational circuit with trainable rotation gates, data re-uploading, and adaptive IsingZZ entanglement.
-- **Graph Message Passing:** Models interactions among four detector stations using directed pairwise connections.
-- **Optimized JAX Simulator:** Implements a fast, closed-form quantum circuit simulator and verifies its outputs against PennyLane.
-- **Extensive Ablation Studies:** Investigates the contributions of quantum interactions, physics priors, circuit configurations, detector features, and graph message passing.
-
-## Architecture
-
-PI-QGAT processes measurements from four detector stations, represented as nodes in a fully connected directed graph.
-
-Each station contains seven input features:
-
-| Feature | Description |
-|---|---|
-| Phi | Angular coordinate |
-| Theta | Polar coordinate |
-| BendingAngle | Track bending measurement |
-| TimeInfo | Timing information |
-| RingNumber | Detector ring information |
-| Front | Detector front-layer indicator |
-| Mask | Detector measurement mask |
-
-Each node is projected into a 4-dimensional representation, matching the four qubits used in the quantum interaction block.
-
-### Model Components
-
-**1. Node and Pairwise Projection**
-
-- Projects seven station features into four-dimensional node embeddings.
-- Combines receiver and sender embeddings to construct pairwise interaction inputs.
-- Generates four rotation angles for each detector-station pair.
-
-**2. Quantum Interaction Block**
-
-The quantum circuit consists of:
-
-- Four qubits.
-- Parameterized RY and RZ rotation gates.
-- Ring-based IsingZZ entanglement.
-- Data re-uploading between variational layers.
-- Pauli-Z expectation measurements.
-
-The quantum circuit produces four expectation values for each station pair, which are used in graph attention and message passing.
-
-**3. Physics-Informed Graph Attention**
-
-The attention mechanism combines quantum outputs with a physics-based prior derived from:
-
-- Absolute bending-angle differences.
-- Angular differences between detector stations.
-
-This allows the model to consider both learned quantum interactions and detector-related physical information when calculating attention weights.
-
-**4. Graph Message Passing**
-
-The model performs one round of attention-weighted message passing across the four detector stations. Quantum interaction outputs contribute to both attention calculation and message construction.
-
-**5. Prediction Head**
-
-The aggregated graph representation is passed through a classical neural network head (4 → 6 → 1) to predict the normalized log-transformed transverse momentum.
-
-## Quantum Circuit Design
-
-The quantum interaction block follows a two-layer variational circuit:
-
-1. Encode pairwise features using RY rotations.
-2. Apply trainable RZ and RY rotations.
-3. Perform adaptive ring-based IsingZZ entanglement.
-4. Re-upload the input angles using RY rotations.
-5. Apply the second variational rotation layer.
-6. Measure Pauli-Z expectation values from all four qubits.
-
-The adaptive entanglement angles are generated using a trainable classical network, allowing the entangling interactions to depend on the input detector-pair features.
-
-## Dataset and Preprocessing
-
-**Dataset:** CMS Trigger Dataset
-
-**Source:** [Kaggle – CMS Trigger Dataset](https://www.kaggle.com/datasets/prateekagnihotri/cms-trigger-dataset)
-
-The dataset contains 1,179,356 events.
-
-Preprocessing includes:
-
-- Extraction of detector measurements from four selected stations.
-- Reconstruction of transverse momentum using \(p_T = |1/(q/p_T)|\).
-- Removal of invalid and non-finite observations.
-- Feature standardization using training-set statistics.
-- Logarithmic target transformation using \(\log(1+p_T)\).
-- Construction of a fully connected directed graph with 12 edges.
-
-**Data split:**
-
-| Subset | Percentage |
-|---|---:|
-| Training | 20% |
-| Validation | 20% |
-| Testing | 60% |
-
-All dataset partitions are retained.
-
-## Experimental Design: Ablation Studies
-
-A major part of this project involves systematic ablation experiments to understand the contribution of individual architectural components.
-
-The experiments investigate the following aspects:
-
-### 1. Quantum vs. Classical Comparison
-
-Compared the quantum interaction block against parameter-matched and reduced-parameter classical alternatives to investigate the contribution of quantum interactions.
-
-### 2. Physics Prior Ablation
-
-Compared physics-informed attention with attention without the physics prior to investigate the importance of detector geometry.
-
-### 3. Entanglement Topology
-
-Investigated different quantum entanglement configurations:
-
-- Ring
-- Linear/chain
-- All-to-all
-- No entanglement
-
-### 4. Quantum Circuit Capacity
-
-Examined different numbers of qubits and circuit depths to investigate the effects of circuit dimensionality and expressiveness.
-
-### 5. Entangling Gate Ablation
-
-Compared different entangling mechanisms, including adaptive RZZ, CNOT, adaptive CRX, and fixed-angle RZZ configurations.
-
-### 6. Quantum Circuit Initialization
-
-Investigated different parameter initialization strategies, including uniform, small-uniform, normal, and zero initialization.
-
-### 7. Feature Ablation
-
-Performed leave-one-feature-out retraining and permutation importance analysis to evaluate the contribution of individual detector features.
-
-### 8. Graph Attention Ablation
-
-Investigated the role of quantum outputs in attention calculation and message construction, including uniform attention, quantum-message-only, quantum-attention-only, and no-quantum configurations.
-
-### 9. Message-Passing Ablation
-
-Evaluated different message aggregation and graph configurations, including:
-
-- Sum and max aggregation.
-- Residual connections.
-- Mean and max graph readout.
-- One versus two message-passing rounds.
-- Pairwise versus sender-only interactions.
-- Removal of message passing.
-
-### 10. Quantum Circuit Distillation
-
-Investigated whether the trained quantum interaction block could be approximated by classical neural networks with different hidden-layer capacities, using block-level knowledge transfer and prediction-level distillation.
-
-## Results
-
-The main PI-QGAT model contains **144 trainable parameters**.
-
-In the recorded test evaluation:
-
-| Metric | Result |
-|---|---:|
-| Test \(R^2\) (log1p scale) | 0.8395 |
-| Test MAE (log1p scale) | 0.2143 |
-| Test MSE (log1p scale) | 0.1416 |
-| Test RMSE (log1p scale) | 0.3763 |
-| Test MAE (\(p_T\)) | 11.8517 GeV |
-
-### Quantum vs. Classical Ablation
-
-The recorded parameter-matched comparison produced the following results:
-
-| Model | Parameters | Test \(R^2\) |
-|---|---:|---:|
-| PI-QGAT (Quantum) | 144 | 0.8395 |
-| Classical-36 | 144 | 0.6150 |
-| Classical-16 | 124 | 0.5750 |
-| No-Quantum | 72 | 0.3904 |
-
-The parameter-matched experiment investigates whether the quantum interaction block provides a different learning capability from a classical block with the same parameter budget.
-
-*Note: These comparison results are from the recorded seed-42 experiment and should be interpreted as preliminary evidence rather than multi-seed statistical validation.*
-
-## Implementation and Optimization
-
-The project uses an optimized JAX-based implementation of the four-qubit quantum circuit.
-
-Key implementation details:
-
-- Closed-form quantum state simulation.
-- JAX JIT compilation and automatic differentiation.
-- XLA-based training optimization.
-- Fused quantum circuit operations.
-- PennyLane-based circuit correctness verification.
-- Best-validation-checkpoint model selection.
-
-The optimized simulator was numerically verified against PennyLane's `default.qubit` simulator.
-
-## Technologies Used
-
-- **Python**
-- **JAX** – Differentiable quantum simulation and optimization
-- **PyTorch** – Data handling and neural network components
-- **PennyLane** – Quantum circuit construction and verification
-- **NumPy & Pandas** – Numerical computation and data preprocessing
-- **Scikit-learn** – Data splitting and evaluation metrics
-- **KaggleHub** – Dataset acquisition
-
-## Running the Project
-
-The experiments were developed in Google Colab-compatible Jupyter notebooks.
-
-1. Open the notebook in Google Colab.
-2. Run the package installation and import cell.
-3. Run the dataset acquisition and preprocessing cell.
-4. Execute the PI-QGAT model training cell.
-5. Run the individual ablation experiment sections to reproduce the comparisons.
-
-PennyLane and KaggleHub are installed automatically by the setup cell.
-
-## Research Objective
-
-The central objective of this project is to investigate how parameterized quantum circuits and physics-informed graph learning can work together for particle-level prediction tasks.
-
-Rather than assuming that quantum components automatically provide an advantage, the project uses controlled ablation experiments and parameter-matched classical comparisons to investigate their actual contribution to the overall architecture.
+The repository contains the main model and a broad ablation study covering the quantum circuit design, the physics prior, the graph architecture, the detector stations and the input features.
 
 ---
 
-**Project Focus:** Quantum Machine Learning | Hybrid Quantum-Classical Models | Graph Neural Networks | Physics-Informed Learning | Particle Physics
+## 📌 Highlights
+
+- **Test R² = 0.8395** on log(1+pT) and **MAE = 11.85 GeV** on 707,614 held-out events, with just 144 parameters (288 bytes in float16).
+- **Fast inference:** 3.9 µs per event (≈256k events/s on CPU) using the constant-folded circuit.
+- The quantum interaction block beats a **parameter-matched classical block trained from scratch** by +0.22 R² (0.8395 vs 0.6150).
+- **Distillation shows the circuit's function is classically representable:** a 252-parameter classical student reaches R² 0.8384 (within 0.001 of the teacher), and a warm-started 144-parameter classical control reaches 0.8301. The quantum block's main value here appears to be a better optimisation path rather than a function class that classical models cannot express.
+- **Entanglement matters, topology does not:** removing entanglement drops R² by 0.25, while ring, linear and all-to-all topologies differ by only 0.0015.
+- **Data-dependent entangling angles** are the key ingredient: adaptive RZZ beats fixed RZZ, and the attribution analysis shows adaptivity matters about 8× more than the choice of gate.
+
+---
+
+## 🔬 Problem and Data
+
+| Item | Value |
+|---|---|
+| Dataset | [CMS Trigger Dataset](https://www.kaggle.com/datasets/prateekagnihotri/cms-trigger-dataset) (Kaggle, `prateekagnihotri/cms-trigger-dataset`) |
+| Events | 1,179,356 (no rows removed by cleaning) |
+| Split | 20% train (235,871) / 20% validation (235,871) / 60% test (707,614) |
+| Stations (graph nodes) | 4 muon stations: 0, 2, 3, 4 |
+| Features per station | Phi, Theta, BendingAngle, TimeInfo, RingNumber, Front, Mask (7) |
+| Target | log(1 + pT), with pT = \|1 / (q/pT)\| |
+
+Each event is a fully connected graph of 4 station nodes with 12 directed edges.
+
+---
+
+## ⚛️ Model Architecture
+
+```mermaid
+flowchart LR
+    X["Station features<br/>4 nodes × 7"] --> NP["node_proj<br/>7 → 4"]
+    NP --> H["h_i"]
+    H --> PP["pair_proj [h_i, h_j]<br/>8 → 4"]
+    PP --> TH["θ = π·tanh(·)"]
+    TH --> QC["4-qubit circuit<br/>⟨Z⟩ → z_ij"]
+    TH --> EG["entangle_gate<br/>RZZ angles α(θ)"]
+    EG --> QC
+    R["|Δ bending|, |Δ φ|"] --> PH["physics_prior<br/>2 → 1"]
+    QC --> ATT["attention<br/>softmax(mean z + λ·P)"]
+    PH --> ATT
+    ATT --> MP["message passing<br/>m_i = Σ α_ij (h_j + z_ij)"]
+    QC --> MP
+    H --> MP
+    MP --> RO["h'_i = h_i + m_i<br/>mean over nodes"]
+    RO --> HEAD["head 4 → 6 → 1"]
+    HEAD --> Y["log(1+pT)"]
+```
+
+### Quantum interaction block
+
+<p align="center">
+  <img src="images/00_quantum_circuit.png" alt="PI-QGAT 4-qubit quantum circuit" width="900">
+</p>
+
+For each edge, 4 angles θ are encoded with RY gates, followed by a variational layer (RZ, RY), a ring of IsingZZ gates whose angles are **computed from the data** (α = π·sigmoid(W·θ + b)), a data re-uploading RY(θ) layer, a second variational layer, and Z-basis measurement on each qubit.
+
+A second RZZ layer placed before the Z measurement was proven to be inert (it is diagonal and cannot change ⟨Z⟩; numerical check: 3.9 × 10⁻¹⁶) and was removed.
+
+### Parameter budget (144)
+
+| Component | Parameters |
+|---|---|
+| node_proj 7 → 4 | 32 |
+| pair_proj 8 → 4 | 36 |
+| entangle_gate 4 → 4 (RZZ angles) | 20 |
+| Circuit angles (2 layers × 4 qubits × 2) | 16 |
+| physics_prior 2 → 1 | 3 |
+| head 4 → 6 → 1 | 37 |
+| **Total** | **144** |
+
+### Training setup
+
+Adam (lr 1e-3, constant), batch size 64, 50 epochs, SmoothL1 loss (β = 1), gradient clipping at 1.0, L2 weight decay 3e-5 on classical weights only, physics-prior weight λ = 0.1. The best-validation checkpoint is evaluated on the test set.
+
+**Fast simulator:** each epoch runs as a single XLA call (`lax.scan`) with an exact real-arithmetic 4-qubit simulator. The closed-form circuit matches PennyLane `default.qubit` to 2 × 10⁻⁷.
+
+---
+
+## 📊 Main Results
+
+<p align="center">
+  <img src="images/01_training_curves.png" alt="PI-QGAT training curves" width="900">
+</p>
+
+| Metric (test set) | Value |
+|---|---|
+| R² (log pT) | **0.8395** |
+| MAE (log pT) | 0.2143 |
+| RMSE (log pT) | 0.3763 |
+| MAE (pT) | **11.85 GeV** |
+| RMSE (pT) | 126.86 GeV |
+| Inference (folded circuit) | 3.90 µs/event, ≈256k events/s |
+| Latency, batch 1 / 64 / 1024 | 0.44 / 0.75 / 4.90 ms |
+| Model size | 576 bytes (float32), 288 bytes (float16, ΔR² = −0.00005) |
+
+### Performance by pT class
+
+<p align="center">
+  <img src="images/02_per_pt_class.png" alt="Error by pT class" width="850">
+</p>
+
+Accuracy is best for low-pT muons, which make up most of the data. The ≥100 GeV class is only 2.6% of events but accounts for 99.5% of the squared error in pT, which is why the GeV-scale RMSE is large.
+
+---
+
+## ⚖️ Quantum vs Classical Interaction Block
+
+<p align="center">
+  <img src="images/03_quantum_vs_classical.png" alt="Quantum vs classical interaction block" width="900">
+</p>
+
+Everything except the interaction block is identical (same layers, initialisation, seeds and batch order).
+
+| Variant | Params | Test R² | MAE (GeV) |
+|---|---|---|---|
+| **Quantum** | 144 | **0.8395** | **11.85** |
+| Classical-36: tanh MLP, parameter-matched | 144 | 0.6150 | 14.49 |
+| Classical-16: tanh(Wθ), no RZZ generator | 124 | 0.5750 | 14.69 |
+| No interaction block | 72 | 0.3904 | 15.44 |
+
+### Distilling the circuit into a classical network
+
+<p align="center">
+  <img src="images/04_distillation.png" alt="Knowledge distillation of the quantum block" width="900">
+</p>
+
+The trained quantum block was replaced by a classical MLP student of hidden width H, first fitted label-free to the circuit's outputs (stage A, "zero-shot swap"), then fine-tuned with knowledge distillation (stage B).
+
+| Model | Params | Test R² | ΔR² vs teacher | µs/event |
+|---|---|---|---|---|
+| Quantum teacher | 144 | 0.8395 | – | 6.79 |
+| Distilled, H = 4 | 144 | 0.8187 | −0.0209 | 1.95 |
+| Distilled, H = 8 | 180 | 0.8239 | −0.0157 | 2.12 |
+| Distilled, H = 16 | 252 | 0.8384 | −0.0011 | 2.84 |
+| Distilled, H = 32 | 396 | 0.8390 | −0.0005 | 4.09 |
+| Control: labels only, warm-started trunk, H = 4 | 144 | 0.8301 | −0.0095 | 2.00 |
+
+**Reading:** a classical student with a warm-started trunk gets close to the teacher, while the same-size classical block trained from scratch reaches only 0.6150. This suggests the circuit's main contribution is a better optimisation path, not a function class beyond classical reach. Fully absorbing the circuit takes about 16 hidden units.
+
+---
+
+## 🧪 Ablation Studies
+
+### Physics prior
+
+<p align="center">
+  <img src="images/05_physics_prior.png" alt="Physics prior on vs off" width="850">
+</p>
+
+The physics prior adds |Δ bending angle| and |Δ φ| between stations to the attention logits. Over 5 seeds, the prior improves mean R² by +0.036 and lowers MAE in every pT class, but the gain is not statistically significant (paired t-test p = 0.36) because of one unstable seed (seed 100). On the other 4 seeds, the two variants are within 0.008 R².
+
+### Quantum circuit design
+
+<p align="center">
+  <img src="images/06_circuit_design_ablations.png" alt="Circuit design ablations" width="900">
+</p>
+
+- **Entanglement topology:** any entanglement is essential (none: R² 0.589), but the specific topology barely matters (ring, linear and all-to-all are within 0.0015).
+- **Adaptive vs fixed RZZ:** data-dependent RZZ angles beat fixed angles (0.8395 vs 0.8247).
+- **Entangler gate:** adaptive CRX (0.8366) nearly matches adaptive RZZ, while fixed RZZ (0.8161) and CNOT (0.8079) are clearly worse. Adaptivity matters about **8×** more than the gate type.
+- **Data re-uploading:** no measurable effect (all variants within 0.001).
+
+### Number of qubits, depth and initialisation
+
+<p align="center">
+  <img src="images/07_qubits_depth_init.png" alt="Qubits, depth and initialisation" width="900">
+</p>
+
+- **Qubits:** 4 qubits performs best (0.8386). Note that the node dimension scales with the qubit count, so parameters change too.
+- **Depth:** 2 variational layers is the sweet spot. Depth 3 and 4 are slightly worse and 8–11× slower per epoch.
+- **Initialisation:** all schemes land within 0.01 R², i.e. within single-seed noise.
+
+### Muon stations
+
+<p align="center">
+  <img src="images/08_station_ablation.png" alt="Station ablation and attention map" width="850">
+</p>
+
+**Station 0 is by far the most important:** removing it drops R² by 0.34. Removing station 2 costs 0.01, and stations 3 and 4 can be removed with no loss. The learned attention also places the most weight on station 0 as a sender.
+
+### Input features
+
+<p align="center">
+  <img src="images/09_feature_ablation.png" alt="Feature ablation" width="900">
+</p>
+
+**Phi, Theta and BendingAngle carry almost all the information.** Phi matters most by far. RingNumber, Front, Mask and TimeInfo each cost at most 0.014 R² when removed.
+
+### Graph attention and message passing
+
+<p align="center">
+  <img src="images/10_attention_message_passing.png" alt="Attention and message-passing ablations" width="900">
+</p>
+
+- **The quantum output matters in the message, not in the attention.** Using it only in the message gives 0.8410; using it only in the attention drops to 0.6078.
+- Learned attention is close to uniform (entropy 0.985), and forcing uniform attention costs only 0.001 R².
+- Removing message passing entirely drops R² to 0.43. The edge function must see **both** stations: using only the sender drops R² to 0.71.
+- Standard GNN design choices (residual connection, sum or max aggregation, two rounds, max readout) change R² by less than 0.006.
+
+---
+
+## 🏆 Key Findings
+
+1. A 144-parameter hybrid quantum–classical GNN reaches R² 0.84 on muon pT regression over 707k test events, at under 4 µs per event.
+2. The quantum block clearly outperforms parameter-matched classical blocks trained from scratch, but distillation shows its function can be represented classically. The advantage is best described as an optimisation advantage.
+3. Within the circuit, **data-dependent entangling angles** are what matter. Topology, gate type, re-uploading, depth and initialisation have small effects.
+4. Station 0 and the Phi, Theta and BendingAngle features carry most of the predictive information.
+
+## ⚠️ Limitations
+
+- Most ablations use a **single seed (42)**. The seed-to-seed spread of R² is about 0.006–0.01, so smaller gaps are not reliable.
+- The physics-prior study (5 seeds) shows one unstable seed, so seed variance is a real concern for this model.
+- The quantum circuit is **simulated exactly on classical hardware**; no runs were performed on quantum devices.
+- Errors in pT (GeV) are dominated by the rare ≥100 GeV class.
+
+---
+
+## 📁 Repository Structure
+
+```
+PI-QGAT/
+│
+├── README.md
+├── requirements.txt
+├── images/                                   # Figures used in this README
+│   ├── 00_quantum_circuit.png
+│   ├── 01_training_curves.png
+│   ├── 02_per_pt_class.png
+│   ├── 03_quantum_vs_classical.png
+│   ├── 04_distillation.png
+│   ├── 05_physics_prior.png
+│   ├── 06_circuit_design_ablations.png
+│   ├── 07_qubits_depth_init.png
+│   ├── 08_station_ablation.png
+│   ├── 09_feature_ablation.png
+│   └── 10_attention_message_passing.png
+│
+├── notebooks/
+│   ├── jax_piqgata_fast.ipynb                # Data, main model, quantum-vs-classical, distillation
+│   └── jax_piqgata_ablation_experiments.ipynb  # All ablation studies
+│
+└── scripts/
+    └── make_figures.py                       # Rebuilds the README figures from notebook outputs
+```
+
+---
+
+## 🚀 Getting Started
+
+The notebooks are designed for **Google Colab or Kaggle**. The dataset is downloaded automatically with `kagglehub`.
+
+```bash
+pip install jax pennylane kagglehub numpy pandas scikit-learn torch matplotlib
+```
+
+Run the cells in order:
+
+1. **Cell 0:** package installs
+2. **Cell 1:** data download, cleaning, 20/20/60 split, graph construction
+3. **Cell 3:** train and evaluate the 144-parameter PI-QGAT
+4. **Cell 4:** quantum vs classical ablation
+5. **Cell 5:** distillation into classical students
+6. **Ablation cells:** each one is independent and only needs Cells 0 and 1
+
+To reproduce multi-seed results, set `SEEDS = [42, 1, 60, 100, 120]` in the relevant cell.
+
+---
+
+## 🛠️ Technologies Used
+
+- **JAX** – Fast exact circuit simulation and training (XLA, `lax.scan`)
+- **PennyLane** – Circuit correctness verification
+- **NumPy, pandas, scikit-learn** – Data processing and metrics
+- **PyTorch** – Data preparation utilities
+- **Matplotlib** – Figures
+- **kagglehub** – Dataset download
