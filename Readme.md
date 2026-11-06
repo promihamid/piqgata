@@ -214,65 +214,6 @@ The physics prior adds |Δ bending angle| and |Δ φ| between stations to the at
 3. Within the circuit, **data-dependent entangling angles** are what matter. Topology, gate type, re-uploading, depth and initialisation have small effects.
 4. Station 0 and the Phi, Theta and BendingAngle features carry most of the predictive information.
 
-## ⚠️ Limitations
-
-- Most ablations use a **single seed (42)**. The seed-to-seed spread of R² is about 0.006–0.01, so smaller gaps are not reliable.
-- The physics-prior study (5 seeds) shows one unstable seed, so seed variance is a real concern for this model.
-- The quantum circuit is **simulated exactly on classical hardware**; no runs were performed on quantum devices.
-- Errors in pT (GeV) are dominated by the rare ≥100 GeV class.
-
----
-
-## 📁 Repository Structure
-
-```
-PI-QGAT/
-│
-├── README.md
-├── requirements.txt
-├── images/                                   # Figures used in this README
-│   ├── 00_quantum_circuit.png
-│   ├── 01_training_curves.png
-│   ├── 02_per_pt_class.png
-│   ├── 03_quantum_vs_classical.png
-│   ├── 04_distillation.png
-│   ├── 05_physics_prior.png
-│   ├── 06_circuit_design_ablations.png
-│   ├── 07_qubits_depth_init.png
-│   ├── 08_station_ablation.png
-│   ├── 09_feature_ablation.png
-│   └── 10_attention_message_passing.png
-│
-├── notebooks/
-│   ├── jax_piqgata_fast.ipynb                # Data, main model, quantum-vs-classical, distillation
-│   └── jax_piqgata_ablation_experiments.ipynb  # All ablation studies
-│
-└── scripts/
-    └── make_figures.py                       # Rebuilds the README figures from notebook outputs
-```
-
----
-
-## 🚀 Getting Started
-
-The notebooks are designed for **Google Colab or Kaggle**. The dataset is downloaded automatically with `kagglehub`.
-
-```bash
-pip install jax pennylane kagglehub numpy pandas scikit-learn torch matplotlib
-```
-
-Run the cells in order:
-
-1. **Cell 0:** package installs
-2. **Cell 1:** data download, cleaning, 20/20/60 split, graph construction
-3. **Cell 3:** train and evaluate the 144-parameter PI-QGAT
-4. **Cell 4:** quantum vs classical ablation
-5. **Cell 5:** distillation into classical students
-6. **Ablation cells:** each one is independent and only needs Cells 0 and 1
-
-To reproduce multi-seed results, set `SEEDS = [42, 1, 60, 100, 120]` in the relevant cell.
-
----
 
 ## 🛠️ Technologies Used
 
